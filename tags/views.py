@@ -5,18 +5,28 @@ from rest_framework.viewsets import ModelViewSet
 from .serializers import BookmarkSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework import status
 
 
 class BookmarkViewSet(ModelViewSet):
     queryset = Bookmark.objects.all()
     serializer_class = BookmarkSerializer
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]
 
-    def perform_create(self, serializer):
-        tag = serializer.validated_data['tag']
-        titles = Tag.objects.all()
-        if tag not in titles:
-            title = Tag.objects.create(title=tag)
-            print(title)
-        
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        tag = data.get('tag')
+        if tag:
+            try:
+                title = Tag.objects.get(title=tag)
+            except:
+                title = Tag.objects.create(title=tag.lower())
+                tag = title
+            else:
+                tag = title
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
